@@ -20,10 +20,7 @@ class TestFastAPIIntegration:
         # Test with non-existent ruleset
         response = client.post(
             "/execute",
-            json={
-                "facts": [{"income": 50000}],
-                "ruleset_uri": "nonexistent"
-            }
+            json={"facts": [{"income": 50000}], "ruleset_uri": "nonexistent"},
         )
 
         # Should get a 400 error due to ValueError being raised
@@ -34,28 +31,26 @@ class TestFastAPIIntegration:
         import machine_rules  # noqa: F401
 
         from machine_rules.__main__ import app
-        from machine_rules.api.registry import (
-            RuleServiceProviderManager
-        )
-        from machine_rules.api.execution_set import (
-            Rule, RuleExecutionSet
-        )
+        from machine_rules.api.registry import RuleServiceProviderManager
+        from machine_rules.api.execution_set import Rule, RuleExecutionSet
 
         client = TestClient(app)
 
         # Set up a test rule
         def condition(fact):
-            return fact.get('income', 0) > 50000
+            return fact.get("income", 0) > 50000
 
         def action(fact):
-            return {'category': 'high_income'}
+            return {"category": "high_income"}
 
         rule = Rule(name="income_test", condition=condition, action=action)
         execution_set = RuleExecutionSet(name="test_rules", rules=[rule])
 
         # Register the rule set
         provider = RuleServiceProviderManager.get("api")
-        assert provider is not None, "RuleServiceProviderManager.get('api') returned None"
+        assert provider is not None, (
+            "RuleServiceProviderManager.get('api') returned None"
+        )
         admin = provider.get_rule_administrator()
         admin.register_rule_execution_set("test_income_rules", execution_set)
 
@@ -64,8 +59,8 @@ class TestFastAPIIntegration:
             "/execute",
             json={
                 "facts": [{"income": 75000}, {"income": 25000}],
-                "ruleset_uri": "test_income_rules"
-            }
+                "ruleset_uri": "test_income_rules",
+            },
         )
 
         assert response.status_code == 200

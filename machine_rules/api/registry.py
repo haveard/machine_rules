@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 # Forward references to avoid circular imports
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .administrator import RuleAdministrator
     from .runtime import RuleRuntime
@@ -15,12 +16,12 @@ class RuleServiceProvider(ABC):
     """
 
     @abstractmethod
-    def get_rule_administrator(self) -> 'RuleAdministrator':
+    def get_rule_administrator(self) -> "RuleAdministrator":
         """Get the rule administrator for this provider."""
         pass
 
     @abstractmethod
-    def get_rule_runtime(self) -> 'RuleRuntime':
+    def get_rule_runtime(self) -> "RuleRuntime":
         """Get the rule runtime for this provider."""
         pass
 

@@ -14,16 +14,14 @@ class RuleAdministrator(ABC):
         self,
         name: str,
         execution_set: RuleExecutionSet,
-        properties: Optional[Dict[str, Any]] = None
+        properties: Optional[Dict[str, Any]] = None,
     ):
         """Register a RuleExecutionSet with the administrator."""
         pass
 
     @abstractmethod
     def deregister_rule_execution_set(
-        self,
-        name: str,
-        properties: Optional[Dict[str, Any]] = None
+        self, name: str, properties: Optional[Dict[str, Any]] = None
     ):
         """Remove a RuleExecutionSet registration."""
         pass

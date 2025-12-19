@@ -6,4 +6,4 @@ This module provides safe expression evaluation to prevent code injection attack
 
 from .safe_evaluator import safe_eval, SecurityError
 
-__all__ = ['safe_eval', 'SecurityError']
+__all__ = ["safe_eval", "SecurityError"]

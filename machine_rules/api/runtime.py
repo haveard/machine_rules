@@ -14,7 +14,7 @@ class RuleRuntime(ABC):
         self,
         uri: str,
         properties: Optional[Dict[str, Any]] = None,
-        stateless: bool = False
+        stateless: bool = False,
     ) -> RuleSession:
         """Create a rule session for executing rules."""
         pass

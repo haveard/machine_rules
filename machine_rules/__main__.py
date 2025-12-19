@@ -20,16 +20,14 @@ app = FastAPI()
 def execute_rule_set(data: FactModel):
     try:
         from machine_rules.api.exceptions import RuleValidationError
-        
+
         provider = RuleServiceProviderManager.get("api")
         if not provider:
             detail = "No rule service provider registered for 'api'"
             raise HTTPException(status_code=500, detail=detail)
 
         runtime = provider.get_rule_runtime()
-        session = runtime.create_rule_session(
-            data.ruleset_uri, {}, stateless=True
-        )
+        session = runtime.create_rule_session(data.ruleset_uri, {}, stateless=True)
         session.add_facts(data.facts)
         results = session.execute()
         session.close()
@@ -44,9 +42,4 @@ def execute_rule_set(data: FactModel):
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "machine_rules.__main__:app",
-        host="127.0.0.1",
-        port=8000,
-        reload=True
-    )
+    uvicorn.run("machine_rules.__main__:app", host="127.0.0.1", port=8000, reload=True)

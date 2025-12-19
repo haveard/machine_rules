@@ -13,7 +13,7 @@ The example shows:
 
 Requirements:
     pip install langgraph langchain-ollama
-    
+
     # Ensure Ollama is running with the model:
     ollama pull gpt-oss:20b
 """
@@ -53,7 +53,7 @@ class RulesLangGraphAgent:
             model="gpt-oss:20b",
             temperature=0.7,
         )
-        
+
         # Initialize rules engine
         self.provider = RuleServiceProviderManager.get("api")
         if not self.provider:
@@ -306,7 +306,9 @@ rules:
             "next_action": "escalate" if routing_info.get("escalate") else "respond",
         }
 
-    def _should_escalate(self, state: ConversationState) -> Literal["escalate", "generate_response"]:
+    def _should_escalate(
+        self, state: ConversationState
+    ) -> Literal["escalate", "generate_response"]:
         """Conditional edge function to determine if escalation is needed."""
         action = state.get("next_action", "respond")
         if action == "escalate":
@@ -355,9 +357,9 @@ Keep it concise (2-3 sentences) and appropriate for their tier level."""
         # Generate response using Ollama
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": customer_message}
+            {"role": "user", "content": customer_message},
         ]
-        
+
         llm_response = self.llm.invoke(messages)
         response = llm_response.content
 
@@ -366,7 +368,7 @@ Keep it concise (2-3 sentences) and appropriate for their tier level."""
             response += " As a VIP customer, you'll receive priority assistance."
 
         ai_message = AIMessage(content=response)
-        
+
         # Append to messages instead of replacing
         new_messages = state["messages"] + [ai_message]
 
@@ -394,7 +396,7 @@ Keep it concise (2-3 sentences) and appropriate for their tier level."""
         )
 
         ai_message = AIMessage(content=response)
-        
+
         # Append to messages instead of replacing
         new_messages = state["messages"] + [ai_message]
 
@@ -480,7 +482,7 @@ def example_conversation_flow():
                 "account_type": "basic",
             },
             "message": (
-                "Hi, I'm new here and would like to know more about " "your services."
+                "Hi, I'm new here and would like to know more about your services."
             ),
         },
         {
@@ -492,14 +494,14 @@ def example_conversation_flow():
                 "account_type": "standard",
             },
             "message": (
-                "This is terrible! Your service is awful and I'm very " "frustrated!"
+                "This is terrible! Your service is awful and I'm very frustrated!"
             ),
         },
     ]
 
     for i, scenario in enumerate(scenarios, 1):
         print(f"Scenario {i}: {scenario['description']}")
-        print(f"Customer Message: \"{scenario['message']}\"")
+        print(f'Customer Message: "{scenario["message"]}"')
         print(f"Customer Data: {scenario['customer_data']}")
 
         # Process through the agent

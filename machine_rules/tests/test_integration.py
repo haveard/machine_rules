@@ -28,8 +28,9 @@ def get_api_provider():
         # Ensure initialization if provider is not found
         machine_rules.initialize()
         provider = RuleServiceProviderManager.get("api")
-    assert provider is not None, \
+    assert provider is not None, (
         "API provider should be registered after initialization"
+    )
     return provider
 
 
@@ -50,10 +51,10 @@ class TestProviderRegistryIntegration:
 
         # Create and register a rule
         def condition(fact):
-            return fact.get('score', 0) > 80
+            return fact.get("score", 0) > 80
 
         def action(fact):
-            return {'grade': 'A', 'passed': True}
+            return {"grade": "A", "passed": True}
 
         rule = Rule(name="grade_rule", condition=condition, action=action)
         execution_set = RuleExecutionSet(name="grading", rules=[rule])
@@ -65,11 +66,11 @@ class TestProviderRegistryIntegration:
 
         # Execute rules
         session = runtime.create_rule_session("grade_rules")
-        session.add_facts([{'score': 85}, {'score': 75}])
+        session.add_facts([{"score": 85}, {"score": 75}])
         results = session.execute()
 
         assert len(results) == 1
-        assert results[0] == {'grade': 'A', 'passed': True}
+        assert results[0] == {"grade": "A", "passed": True}
 
         session.close()
 
@@ -88,13 +89,13 @@ class TestProviderRegistryIntegration:
         # Create different rules for each provider
         rule1 = Rule(
             name="rule1",
-            condition=lambda f: f.get('type') == 'A',
-            action=lambda f: {'result': 'from_provider1'}
+            condition=lambda f: f.get("type") == "A",
+            action=lambda f: {"result": "from_provider1"},
         )
         rule2 = Rule(
             name="rule2",
-            condition=lambda f: f.get('type') == 'A',
-            action=lambda f: {'result': 'from_provider2'}
+            condition=lambda f: f.get("type") == "A",
+            action=lambda f: {"result": "from_provider2"},
         )
 
         set1 = RuleExecutionSet(name="set1", rules=[rule1])
@@ -108,14 +109,14 @@ class TestProviderRegistryIntegration:
         session1 = provider1.get_rule_runtime().create_rule_session("test")
         session2 = provider2.get_rule_runtime().create_rule_session("test")
 
-        session1.add_facts([{'type': 'A'}])
-        session2.add_facts([{'type': 'A'}])
+        session1.add_facts([{"type": "A"}])
+        session2.add_facts([{"type": "A"}])
 
         result1 = session1.execute()
         result2 = session2.execute()
 
-        assert result1[0]['result'] == 'from_provider1'
-        assert result2[0]['result'] == 'from_provider2'
+        assert result1[0]["result"] == "from_provider1"
+        assert result2[0]["result"] == "from_provider2"
 
         session1.close()
         session2.close()
@@ -169,7 +170,7 @@ rules:
     priority: 10
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_path = f.name
 
@@ -187,17 +188,26 @@ rules:
             # Test various financial profiles
             test_cases = [
                 {
-                    'debt_ratio': 0.5, 'income': 40000, 'credit_score': 550,
-                    'loan_amount': 100000, 'expected_risk': 'HIGH'
+                    "debt_ratio": 0.5,
+                    "income": 40000,
+                    "credit_score": 550,
+                    "loan_amount": 100000,
+                    "expected_risk": "HIGH",
                 },
                 {
-                    'debt_ratio': 0.35, 'income': 80000, 'credit_score': 650,
-                    'loan_amount': 50000, 'expected_risk': 'MEDIUM'
+                    "debt_ratio": 0.35,
+                    "income": 80000,
+                    "credit_score": 650,
+                    "loan_amount": 50000,
+                    "expected_risk": "MEDIUM",
                 },
                 {
-                    'debt_ratio': 0.2, 'income': 100000, 'credit_score': 750,
-                    'loan_amount': 75000, 'expected_risk': 'LOW'
-                }
+                    "debt_ratio": 0.2,
+                    "income": 100000,
+                    "credit_score": 750,
+                    "loan_amount": 75000,
+                    "expected_risk": "LOW",
+                },
             ]
 
             session = runtime.create_rule_session("financial_rules")
@@ -211,17 +221,23 @@ rules:
                 assert len(results) >= 1
                 # Results are ordered by priority, so first result is highest priority
                 highest_priority_result = results[0]
-                assert highest_priority_result['risk_level'] == case['expected_risk']
+                assert highest_priority_result["risk_level"] == case["expected_risk"]
 
-                if case['expected_risk'] == 'HIGH':
-                    assert highest_priority_result['recommendation'] == 'REJECT'
-                    assert highest_priority_result['required_collateral'] == case['loan_amount'] * 1.5
-                elif case['expected_risk'] == 'MEDIUM':
-                    assert highest_priority_result['recommendation'] == 'REVIEW'
-                    assert highest_priority_result['required_collateral'] == case['loan_amount'] * 1.2
+                if case["expected_risk"] == "HIGH":
+                    assert highest_priority_result["recommendation"] == "REJECT"
+                    assert (
+                        highest_priority_result["required_collateral"]
+                        == case["loan_amount"] * 1.5
+                    )
+                elif case["expected_risk"] == "MEDIUM":
+                    assert highest_priority_result["recommendation"] == "REVIEW"
+                    assert (
+                        highest_priority_result["required_collateral"]
+                        == case["loan_amount"] * 1.2
+                    )
                 else:
-                    assert highest_priority_result['recommendation'] == 'APPROVE'
-                    assert highest_priority_result['required_collateral'] == 0
+                    assert highest_priority_result["recommendation"] == "APPROVE"
+                    assert highest_priority_result["required_collateral"] == 0
 
             session.close()
 
@@ -240,7 +256,7 @@ rules:
     priority: 1
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             temp_path = f.name
 
@@ -254,12 +270,12 @@ rules:
             admin.register_rule_execution_set("error_rules", execution_set)
             session = runtime.create_rule_session("error_rules")
 
-            session.add_facts([{'test': 'valid'}])
+            session.add_facts([{"test": "valid"}])
             results = session.execute()
 
             # Should handle valid rules correctly
             assert len(results) == 1
-            assert results[0]['result'] == 'valid_test'
+            assert results[0]["result"] == "valid_test"
 
             session.close()
 
@@ -275,13 +291,14 @@ class TestSessionStateIntegration:
 
     def test_stateful_session_accumulation(self):
         """Test stateful session with fact accumulation."""
+
         # Create rules that work with accumulated facts
         def count_condition(fact):
-            return fact.get('action') == 'count'
+            return fact.get("action") == "count"
 
         def count_action(fact):
             # This would typically access session state
-            return {'count_request': True}
+            return {"count_request": True}
 
         rule = Rule(name="counter", condition=count_condition, action=count_action)
         execution_set = RuleExecutionSet(name="stateful_test", rules=[rule])
@@ -296,10 +313,10 @@ class TestSessionStateIntegration:
         session = runtime.create_rule_session("counter_rules", stateless=False)
 
         # Add facts incrementally
-        session.add_facts([{'action': 'count', 'value': 1}])
+        session.add_facts([{"action": "count", "value": 1}])
         results1 = session.execute()
 
-        session.add_facts([{'action': 'count', 'value': 2}])
+        session.add_facts([{"action": "count", "value": 2}])
         results2 = session.execute()
 
         # Should accumulate facts
@@ -312,8 +329,8 @@ class TestSessionStateIntegration:
         """Test stateless session with fact isolation."""
         rule = Rule(
             name="isolated",
-            condition=lambda f: f.get('type') == 'test',
-            action=lambda f: {'processed': f.get('id')}
+            condition=lambda f: f.get("type") == "test",
+            action=lambda f: {"processed": f.get("id")},
         )
         execution_set = RuleExecutionSet(name="isolation_test", rules=[rule])
 
@@ -326,19 +343,19 @@ class TestSessionStateIntegration:
         # Test stateless session
         session = runtime.create_rule_session("isolation_rules", stateless=True)
 
-        session.add_facts([{'type': 'test', 'id': 1}])
+        session.add_facts([{"type": "test", "id": 1}])
         results1 = session.execute()
 
         # Reset session to clear facts for stateless behavior simulation
         session.reset()
-        session.add_facts([{'type': 'test', 'id': 2}])
+        session.add_facts([{"type": "test", "id": 2}])
         results2 = session.execute()
 
         # Each execution should be independent
         assert len(results1) == 1
         assert len(results2) == 1
-        assert results1[0]['processed'] == 1
-        assert results2[0]['processed'] == 2
+        assert results1[0]["processed"] == 1
+        assert results2[0]["processed"] == 2
 
         session.close()
 
@@ -352,28 +369,34 @@ class TestRulePriorityIntegration:
         rules = []
 
         # Emergency rule (highest priority)
-        rules.append(Rule(
-            name="emergency",
-            condition=lambda f: f.get('emergency', False),
-            action=lambda f: {'priority': 'EMERGENCY', 'order': 1},
-            priority=1000
-        ))
+        rules.append(
+            Rule(
+                name="emergency",
+                condition=lambda f: f.get("emergency", False),
+                action=lambda f: {"priority": "EMERGENCY", "order": 1},
+                priority=1000,
+            )
+        )
 
         # Business hours rule
-        rules.append(Rule(
-            name="business_hours",
-            condition=lambda f: 9 <= f.get('hour', 0) <= 17,
-            action=lambda f: {'priority': 'BUSINESS', 'order': 2},
-            priority=100
-        ))
+        rules.append(
+            Rule(
+                name="business_hours",
+                condition=lambda f: 9 <= f.get("hour", 0) <= 17,
+                action=lambda f: {"priority": "BUSINESS", "order": 2},
+                priority=100,
+            )
+        )
 
         # Default rule (lowest priority)
-        rules.append(Rule(
-            name="default",
-            condition=lambda f: True,
-            action=lambda f: {'priority': 'DEFAULT', 'order': 3},
-            priority=1
-        ))
+        rules.append(
+            Rule(
+                name="default",
+                condition=lambda f: True,
+                action=lambda f: {"priority": "DEFAULT", "order": 3},
+                priority=1,
+            )
+        )
 
         execution_set = RuleExecutionSet(name="priority_test", rules=rules)
 
@@ -386,9 +409,9 @@ class TestRulePriorityIntegration:
 
         # Test different scenarios
         test_cases = [
-            {'emergency': True, 'hour': 10, 'expected_priority': 'EMERGENCY'},
-            {'emergency': False, 'hour': 12, 'expected_priority': 'BUSINESS'},
-            {'emergency': False, 'hour': 20, 'expected_priority': 'DEFAULT'}
+            {"emergency": True, "hour": 10, "expected_priority": "EMERGENCY"},
+            {"emergency": False, "hour": 12, "expected_priority": "BUSINESS"},
+            {"emergency": False, "hour": 20, "expected_priority": "DEFAULT"},
         ]
 
         for case in test_cases:
@@ -400,7 +423,7 @@ class TestRulePriorityIntegration:
             assert len(results) >= 1
             # Check that highest priority matching rule comes first
             highest_priority_result = results[0]
-            assert highest_priority_result['priority'] == case['expected_priority']
+            assert highest_priority_result["priority"] == case["expected_priority"]
 
         session.close()
 
@@ -425,26 +448,26 @@ class TestFastAPIIntegration:
         rules = [
             Rule(
                 name="vip_customer",
-                condition=lambda f: f.get('total_spent', 0) > 10000,
+                condition=lambda f: f.get("total_spent", 0) > 10000,
                 action=lambda f: {
-                    'tier': 'VIP',
-                    'discount': 0.2,
-                    'benefits': ['free_shipping', 'priority_support']
+                    "tier": "VIP",
+                    "discount": 0.2,
+                    "benefits": ["free_shipping", "priority_support"],
                 },
-                priority=20
+                priority=20,
             ),
             Rule(
                 name="regular_customer",
-                condition=lambda f: f.get('total_spent', 0) > 1000,
-                action=lambda f: {'tier': 'REGULAR', 'discount': 0.1},
-                priority=10
+                condition=lambda f: f.get("total_spent", 0) > 1000,
+                action=lambda f: {"tier": "REGULAR", "discount": 0.1},
+                priority=10,
             ),
             Rule(
                 name="new_customer",
                 condition=lambda f: True,
-                action=lambda f: {'tier': 'NEW', 'discount': 0.05},
-                priority=1
-            )
+                action=lambda f: {"tier": "NEW", "discount": 0.05},
+                priority=1,
+            ),
         ]
 
         execution_set = RuleExecutionSet(name="customer_tiers", rules=rules)
@@ -452,30 +475,15 @@ class TestFastAPIIntegration:
 
         # Test API execution with various customer profiles
         test_customers = [
-            {
-                'customer_id': 'C001',
-                'total_spent': 15000,
-                'expected_tier': 'VIP'
-            },
-            {
-                'customer_id': 'C002',
-                'total_spent': 2500,
-                'expected_tier': 'REGULAR'
-            },
-            {
-                'customer_id': 'C003',
-                'total_spent': 100,
-                'expected_tier': 'NEW'
-            }
+            {"customer_id": "C001", "total_spent": 15000, "expected_tier": "VIP"},
+            {"customer_id": "C002", "total_spent": 2500, "expected_tier": "REGULAR"},
+            {"customer_id": "C003", "total_spent": 100, "expected_tier": "NEW"},
         ]
 
         for customer in test_customers:
             response = client.post(
                 "/execute",
-                json={
-                    "facts": [customer],
-                    "ruleset_uri": "customer_classification"
-                }
+                json={"facts": [customer], "ruleset_uri": "customer_classification"},
             )
 
             assert response.status_code == 200
@@ -497,18 +505,12 @@ class TestFastAPIIntegration:
         # Test non-existent ruleset
         response = client.post(
             "/execute",
-            json={
-                "facts": [{"test": "data"}],
-                "ruleset_uri": "non_existent_rules"
-            }
+            json={"facts": [{"test": "data"}], "ruleset_uri": "non_existent_rules"},
         )
         assert response.status_code == 400
 
         # Test invalid request format
-        response = client.post(
-            "/execute",
-            json={"invalid": "format"}
-        )
+        response = client.post("/execute", json={"invalid": "format"})
         assert response.status_code == 422
 
 
@@ -520,9 +522,9 @@ class TestCrossLoaderIntegration:
         # Create programmatic rule
         prog_rule = Rule(
             name="programmatic_rule",
-            condition=lambda f: f.get('source') == 'program',
-            action=lambda f: {'processed_by': 'programmatic'},
-            priority=100
+            condition=lambda f: f.get("source") == "program",
+            action=lambda f: {"processed_by": "programmatic"},
+            priority=100,
         )
 
         # Create YAML rule
@@ -535,7 +537,7 @@ rules:
     priority: 50
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             yaml_path = f.name
 
@@ -546,8 +548,7 @@ rules:
             # Combine rules from different sources
             combined_rules = [prog_rule, yaml_rule]
             combined_execution_set = RuleExecutionSet(
-                name="mixed_rules",
-                rules=combined_rules
+                name="mixed_rules", rules=combined_rules
             )
 
             provider = get_api_provider()
@@ -559,8 +560,8 @@ rules:
 
             # Test execution with different source types
             test_facts = [
-                {'source': 'program', 'data': 'test1'},
-                {'source': 'yaml', 'data': 'test2'}
+                {"source": "program", "data": "test1"},
+                {"source": "yaml", "data": "test2"},
             ]
 
             session.add_facts(test_facts)
@@ -569,8 +570,8 @@ rules:
             assert len(results) == 2
 
             # Results should be ordered by priority (programmatic first)
-            assert results[0]['processed_by'] == 'programmatic'
-            assert results[1]['processed_by'] == 'yaml'
+            assert results[0]["processed_by"] == "programmatic"
+            assert results[1]["processed_by"] == "yaml"
 
             session.close()
 
@@ -586,12 +587,14 @@ class TestPerformanceIntegration:
         # Create 100 rules with different priorities
         rules = []
         for i in range(100):
-            rules.append(Rule(
-                name=f"rule_{i}",
-                condition=lambda f, target=i: f.get('target') == target,
-                action=lambda f, rule_id=i: {'matched_rule': rule_id},
-                priority=100 - i  # Descending priority
-            ))
+            rules.append(
+                Rule(
+                    name=f"rule_{i}",
+                    condition=lambda f, target=i: f.get("target") == target,
+                    action=lambda f, rule_id=i: {"matched_rule": rule_id},
+                    priority=100 - i,  # Descending priority
+                )
+            )
 
         execution_set = RuleExecutionSet(name="large_set", rules=rules)
 
@@ -603,7 +606,7 @@ class TestPerformanceIntegration:
         session = runtime.create_rule_session("large_rules")
 
         # Test with facts that match various rules
-        test_facts = [{'target': i} for i in range(0, 100, 10)]
+        test_facts = [{"target": i} for i in range(0, 100, 10)]
 
         session.add_facts(test_facts)
         results = session.execute()
@@ -614,7 +617,7 @@ class TestPerformanceIntegration:
         # Results should be properly matched
         for i, result in enumerate(results):
             expected_rule_id = i * 10  # Based on our test data
-            assert result['matched_rule'] == expected_rule_id
+            assert result["matched_rule"] == expected_rule_id
 
         session.close()
 

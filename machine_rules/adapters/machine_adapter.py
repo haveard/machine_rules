@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class MachineRuleSession(RuleSession):
     """
     Concrete implementation of RuleSession using the Machine rules engine.
-    
+
     Args:
         execution_set: The rule execution set to use
         stateless: If True, facts are cleared after each execute() call
@@ -37,18 +37,18 @@ class MachineRuleSession(RuleSession):
 
     def execute(self) -> List[Any]:
         """Execute rules and return results.
-        
+
         Execution strategy can be configured via execution_set properties:
         - 'ALL_MATCHES' (default): Execute all matching rules for each fact
         - 'FIRST_MATCH': Stop after first matching rule per fact (short-circuit)
-        
+
         If stateless=True, facts are automatically cleared after execution.
         """
         if self._closed:
             raise SessionError("Session is closed")
 
         # Get execution strategy from properties (default to ALL_MATCHES)
-        strategy = self.execution_set.get_properties().get('strategy', 'ALL_MATCHES')
+        strategy = self.execution_set.get_properties().get("strategy", "ALL_MATCHES")
 
         self.results = []
         for fact in self.facts:
@@ -58,13 +58,15 @@ class MachineRuleSession(RuleSession):
                         result = rule.action(fact)
                         if result is not None:
                             self.results.append(result)
-                        
+
                         # If FIRST_MATCH strategy, stop after first match per fact
-                        if strategy == 'FIRST_MATCH':
+                        if strategy == "FIRST_MATCH":
                             break
                 except Exception as e:
                     # Log error and continue with next rule
-                    logger.error(f"Error executing rule {rule.name}: {e}", exc_info=True)
+                    logger.error(
+                        f"Error executing rule {rule.name}: {e}", exc_info=True
+                    )
 
         # Clear facts if stateless mode
         if self.stateless:
@@ -88,7 +90,7 @@ class MachineRuleSession(RuleSession):
 
 class MachineRuleAdministrator(RuleAdministrator):
     """Thread-safe implementation of RuleAdministrator for the Machine rules engine.
-    
+
     This class uses a reentrant lock to ensure thread-safe operations
     when registering, retrieving, or deregistering rule execution sets
     in multi-threaded environments.
@@ -102,10 +104,10 @@ class MachineRuleAdministrator(RuleAdministrator):
         self,
         name: str,
         execution_set: RuleExecutionSet,
-        properties: Optional[Dict[str, Any]] = None
+        properties: Optional[Dict[str, Any]] = None,
     ):
         """Register a RuleExecutionSet with the administrator.
-        
+
         Thread-safe: Can be called concurrently from multiple threads.
         """
         if properties is None:
@@ -120,12 +122,10 @@ class MachineRuleAdministrator(RuleAdministrator):
             self.registrations[name] = execution_set
 
     def deregister_rule_execution_set(
-        self,
-        name: str,
-        properties: Optional[Dict[str, Any]] = None
+        self, name: str, properties: Optional[Dict[str, Any]] = None
     ):
         """Remove a RuleExecutionSet registration.
-        
+
         Thread-safe: Can be called concurrently from multiple threads.
         """
         if properties is None:
@@ -135,7 +135,7 @@ class MachineRuleAdministrator(RuleAdministrator):
 
     def get_registrations(self) -> Dict[str, RuleExecutionSet]:
         """Get all registered RuleExecutionSets.
-        
+
         Thread-safe: Can be called concurrently from multiple threads.
         """
         with self._lock:
@@ -154,10 +154,10 @@ class MachineRuleRuntime(RuleRuntime):
         self,
         uri: str,
         properties: Optional[Dict[str, Any]] = None,
-        stateless: bool = False
+        stateless: bool = False,
     ) -> RuleSession:
         """Create a rule session for executing rules.
-        
+
         Args:
             uri: The URI of the registered rule execution set
             properties: Optional properties (for JSR-94 compatibility)

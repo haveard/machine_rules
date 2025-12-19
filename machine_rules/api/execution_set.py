@@ -7,11 +7,7 @@ class Rule:
     """
 
     def __init__(
-        self,
-        name: str,
-        condition: Callable,
-        action: Callable,
-        priority: int = 0
+        self, name: str, condition: Callable, action: Callable, priority: int = 0
     ):
         self.name = name
         self.condition = condition
@@ -32,10 +28,7 @@ class RuleExecutionSet:
     """
 
     def __init__(
-        self,
-        name: str,
-        rules: List[Rule],
-        properties: Optional[Dict[str, Any]] = None
+        self, name: str, rules: List[Rule], properties: Optional[Dict[str, Any]] = None
     ):
         self.name = name
         self.rules = sorted(rules, key=lambda r: r.priority, reverse=True)
@@ -51,7 +44,7 @@ class RuleExecutionSet:
 
     def get_description(self) -> str:
         """Get the description of this execution set."""
-        return self.properties.get('description', '')
+        return self.properties.get("description", "")
 
     def get_properties(self) -> Dict[str, Any]:
         """Get all properties of this execution set."""
