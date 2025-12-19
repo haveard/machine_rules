@@ -5,7 +5,6 @@ Test suite for rule loaders
 import pytest
 import tempfile
 import os
-import pandas as pd
 
 
 class TestYAMLRuleLoader:
@@ -89,50 +88,98 @@ rules:
         finally:
             os.unlink(temp_path)
 
+    def test_yaml_loader_validates_structure(self):
+        """YAML loader should validate document structure."""
+        from machine_rules.loader.yaml_loader import YAMLRuleLoader
+        from machine_rules.api.exceptions import RuleValidationError
 
-class TestDMNRuleLoader:
-    """Test the DMN rule loader."""
+        # Missing 'name' field
+        with pytest.raises(RuleValidationError, match="name|required"):
+            YAMLRuleLoader.from_dict({'rules': []})
 
-    def test_dmn_loader_from_excel(self):
-        from machine_rules.loader.dmn_loader import DMNRuleLoader
+        # Missing 'rules' field
+        with pytest.raises(RuleValidationError, match="rules|required"):
+            YAMLRuleLoader.from_dict({'name': 'test'})
 
-        # Create a test Excel file
-        data = {
-            'condition': ['>100000', '<=100000'],
-            'action': ['"high_income"', '"standard"']
-        }
-        df = pd.DataFrame(data)
+    def test_yaml_loader_validates_rule_fields(self):
+        """Each rule should have required fields."""
+        from machine_rules.loader.yaml_loader import YAMLRuleLoader
+        from machine_rules.api.exceptions import RuleValidationError
 
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
-            df.to_excel(f.name, index=False)
-            temp_path = f.name
+        # Rule missing 'name'
+        with pytest.raises(RuleValidationError, match="name|required"):
+            YAMLRuleLoader.from_dict({
+                'name': 'test',
+                'rules': [{'condition': 'True', 'action': '{}'}]
+            })
 
-        try:
-            execution_set = DMNRuleLoader.from_excel(temp_path)
+        # Rule missing 'condition'
+        with pytest.raises(RuleValidationError, match="condition|required"):
+            YAMLRuleLoader.from_dict({
+                'name': 'test',
+                'rules': [{'name': 'rule1', 'action': '{}'}]
+            })
 
-            assert execution_set.get_name() == 'dmn_rules'
+        # Rule missing 'action'
+        with pytest.raises(RuleValidationError, match="action|required"):
+            YAMLRuleLoader.from_dict({
+                'name': 'test',
+                'rules': [{'name': 'rule1', 'condition': 'True'}]
+            })
 
-            rules = execution_set.get_rules()
-            assert len(rules) == 2
+    def test_yaml_loader_validates_expression_safety(self):
+        """YAML loader should detect unsafe expressions during validation."""
+        from machine_rules.loader.yaml_loader import YAMLRuleLoader
+        from machine_rules.api.exceptions import RuleValidationError
 
-            # Test rule execution
-            high_income_fact = {'income': 150000}
-            low_income_fact = {'income': 50000}
+        # Attempt to use __import__
+        with pytest.raises(RuleValidationError, match="unsafe|security|forbidden"):
+            YAMLRuleLoader.from_dict({
+                'name': 'test',
+                'rules': [{
+                    'name': 'rule1',
+                    'condition': '__import__("os").system("ls")',
+                    'action': '{}'
+                }]
+            })
 
-            # Test first rule (>100000)
-            rule_0 = rules[0]
-            assert rule_0.condition(high_income_fact) is True
-            assert rule_0.condition(low_income_fact) is False
-            assert rule_0.action(high_income_fact) == {'result': 'high_income'}
+        # Attempt to use eval
+        with pytest.raises(RuleValidationError, match="unsafe|security|forbidden"):
+            YAMLRuleLoader.from_dict({
+                'name': 'test',
+                'rules': [{
+                    'name': 'rule1',
+                    'condition': 'True',
+                    'action': 'eval("print(1)")'
+                }]
+            })
 
-            # Test second rule (<=100000)
-            rule_1 = rules[1]
-            assert rule_1.condition(low_income_fact) is True
-            assert rule_1.condition(high_income_fact) is False
-            assert rule_1.action(low_income_fact) == {'result': 'standard'}
+    def test_yaml_loader_validates_types(self):
+        """YAML loader should validate field types."""
+        from machine_rules.loader.yaml_loader import YAMLRuleLoader
+        from machine_rules.api.exceptions import RuleValidationError
 
-        finally:
-            os.unlink(temp_path)
+        # 'rules' should be a list
+        with pytest.raises(RuleValidationError, match="rules|list|array"):
+            YAMLRuleLoader.from_dict({
+                'name': 'test',
+                'rules': 'not a list'
+            })
+
+        # 'priority' should be numeric
+        with pytest.raises(RuleValidationError, match="priority|number|integer"):
+            YAMLRuleLoader.from_dict({
+                'name': 'test',
+                'rules': [{
+                    'name': 'rule1',
+                    'condition': 'True',
+                    'action': '{}',
+                    'priority': 'high'  # Should be int
+                }]
+            })
+
+
+# DMN loader tests removed - DMN loader deprecated and removed due to security vulnerabilities
 
 
 class TestIntegrationWithLoaders:

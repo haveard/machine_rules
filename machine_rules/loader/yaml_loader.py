@@ -1,6 +1,13 @@
-import yaml
+import yaml  # type: ignore[import-untyped]
+import logging
 from typing import Dict, Any
+from pydantic import ValidationError
 from machine_rules.api.execution_set import RuleExecutionSet, Rule
+from machine_rules.api.exceptions import RuleValidationError
+from machine_rules.security import safe_eval, SecurityError
+from machine_rules.schemas.rule_schema import RuleSetDefinition
+
+logger = logging.getLogger(__name__)
 
 
 class YAMLRuleLoader:
@@ -33,14 +40,36 @@ class YAMLRuleLoader:
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> RuleExecutionSet:
-        """Load rules from a dictionary structure."""
-        name = data.get('name', 'yaml_rules')
-        description = data.get('description', '')
-        rule_definitions = data.get('rules', [])
+        """Load rules from a dictionary structure.
+        
+        Validates the input structure using Pydantic schemas before creating rules.
+        
+        Raises:
+            RuleValidationError: If the input structure or expressions are invalid.
+        """
+        try:
+            # Validate the input structure using Pydantic schema
+            validated_data = RuleSetDefinition.model_validate(data)
+        except ValidationError as e:
+            # Convert Pydantic validation error to RuleValidationError
+            error_messages = []
+            for error in e.errors():
+                loc = ' -> '.join(str(location) for location in error['loc'])
+                error_messages.append(f"{loc}: {error['msg']}")
+            raise RuleValidationError(
+                f"Invalid rule set structure: {'; '.join(error_messages)}"
+            )
+        
+        # Extract validated data
+        name = validated_data.name
+        description = validated_data.description
+        rule_definitions = validated_data.rules
 
         rules = []
         for rule_def in rule_definitions:
-            rule = YAMLRuleLoader._create_rule_from_definition(rule_def)
+            # Convert Pydantic model to dict for _create_rule_from_definition
+            rule_dict = rule_def.model_dump()
+            rule = YAMLRuleLoader._create_rule_from_definition(rule_dict)
             rules.append(rule)
 
         properties = {
@@ -58,26 +87,25 @@ class YAMLRuleLoader:
         action_expr = rule_def.get('action', 'None')
         priority = rule_def.get('priority', 0)
 
-        # Compile condition and action expressions
-        condition_code = compile(
-            condition_expr, f'<rule:{name}:condition>', 'eval'
-        )
-        action_code = compile(action_expr, f'<rule:{name}:action>', 'eval')
-
+        # Use safe evaluator instead of eval()
         def condition_func(fact):
             try:
-                return eval(
-                    condition_code, {"__builtins__": {}}, {'fact': fact}
-                )
+                return safe_eval(condition_expr, {'fact': fact})
+            except SecurityError as e:
+                logger.error(f"Security error in condition for rule {name}: {e}")
+                return False
             except Exception as e:
-                print(f"Error evaluating condition for rule {name}: {e}")
+                logger.error(f"Error evaluating condition for rule {name}: {e}")
                 return False
 
         def action_func(fact):
             try:
-                return eval(action_code, {"__builtins__": {}}, {'fact': fact})
+                return safe_eval(action_expr, {'fact': fact})
+            except SecurityError as e:
+                logger.error(f"Security error in action for rule {name}: {e}")
+                return None
             except Exception as e:
-                print(f"Error evaluating action for rule {name}: {e}")
+                logger.error(f"Error evaluating action for rule {name}: {e}")
                 return None
 
         return Rule(

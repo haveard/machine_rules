@@ -5,13 +5,16 @@ A JSR-94 compatible rule engine framework for Python that provides a standard in
 ## 🚀 Features
 
 - **JSR-94 Compatible API**: Full implementation of the Java Rule Engine API specification
-- **Multiple Rule Loaders**: Support for YAML, Excel (DMN-style), and programmatic rule definition
+- **Safe Expression Evaluation**: Secure rule evaluation using sandboxed expressions
+- **Multiple Rule Loaders**: Support for YAML and programmatic rule definition
 - **Stateless and Stateful Sessions**: Flexible rule execution patterns
 - **LangGraph Integration**: Seamlessly integrate with LangGraph workflows for AI agents
 - **FastAPI Integration**: REST API for rule execution
 - **Machine Rules Engine**: High-performance rule execution backend
 - **Comprehensive Testing**: Full test coverage with pytest
 - **Type Safety**: Pydantic schema validation
+
+> **⚠️ Security Notice**: Read [SECURITY.md](SECURITY.md) before loading rules from untrusted sources.
 
 ## 📋 Table of Contents
 
@@ -21,14 +24,34 @@ A JSR-94 compatible rule engine framework for Python that provides a standard in
 - [Usage Examples](#usage-examples)
   - [Programmatic Rules](#programmatic-rules)
   - [YAML Rules](#yaml-rules)
-  - [Excel/DMN Rules](#exceldmn-rules)
   - [LangGraph Integration](#langgraph-integration)
 - [REST API](#rest-api)
 - [Advanced Usage](#advanced-usage)
 - [Testing](#testing)
 - [Contributing](#contributing)
+- [UV Package Manager](#uv-package-manager)
 
 ## 🛠 Installation
+
+### Using UV (Recommended)
+
+[UV](https://github.com/astral-sh/uv) is a fast Python package manager. Install it first:
+
+```bash
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install the package
+uv pip install .
+
+# For LangGraph integration
+uv pip install langgraph langchain-core
+
+# For development
+uv pip install -e ".[dev]"
+```
+
+### Using pip
 
 ```bash
 pip install .
@@ -258,45 +281,6 @@ session.add_facts([
 results = session.execute()
 session.close()
 print(results[0])  # {'segment': 'VIP', 'priority': 'highest', ...}
-```
-
-### Excel/DMN Rules
-
-Create decision tables in Excel:
-
-**decision_table.xlsx:**
-| Income Range | Years Customer | Account Type | Result Category |
-|-------------|----------------|--------------|-----------------|
-| >100000     | >5            | premium      | luxury         |
-| >75000      | >3            | premium      | high_value     |
-| >50000      | >2            | standard     | medium_value   |
-| <=50000     | *             | *            | economy        |
-
-```python
-from machine_rules.loader.dmn_loader import DMNRuleLoader
-
-# Load Excel decision table
-execution_set = DMNRuleLoader.from_excel("decision_table.xlsx")
-
-# Register and execute
-provider = RuleServiceProviderManager.get("api")
-admin = provider.get_rule_administrator()
-runtime = provider.get_rule_runtime()
-
-admin.register_rule_execution_set("lifestyle_classification", execution_set)
-
-# Test classification
-test_data = [
-    {'income': 150000, 'years_customer': 7, 'account_type': 'premium'},
-    {'income': 45000, 'years_customer': 1, 'account_type': 'basic'}
-]
-
-session = runtime.create_rule_session("lifestyle_classification")
-session.add_facts(test_data)
-results = session.execute()
-session.close()
-
-print(results)  # [{'result': 'luxury'}, {'result': 'economy'}]
 ```
 
 ### LangGraph Integration
@@ -792,8 +776,9 @@ machine_rules/
 ├── adapters/                   # Backend adapters
 │   └── machine_adapter.py      # Machine rules engine adapter
 ├── loader/                     # Rule loaders
-│   ├── yaml_loader.py          # YAML rule definitions
-│   └── dmn_loader.py           # Excel/DMN decision tables
+│   └── yaml_loader.py          # YAML rule definitions
+├── security/                   # Security modules
+│   └── safe_evaluator.py       # Safe expression evaluation
 ├── schemas/                    # Data validation
 │   └── rule_schema.py          # Pydantic schemas
 └── tests/                      # Test suite
@@ -807,23 +792,52 @@ machine_rules/
 
 ### Development Setup
 
+#### Using UV (Recommended)
+
+```bash
+# Install UV if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone repository
+git clone https://github.com/haveard/machine_rules.git
+cd machine_rules
+
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov=machine_rules
+
+# Format code
+ruff check .
+ruff format .
+```
+
+#### Using pip
+
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/haveard/machine_rules.git
 cd machine_rules
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install in development mode
 pip install -e ".[dev]"
-
-# Install pre-commit hooks
-pre-commit install
 
 # Run tests
 pytest
 
 # Format code
-black .
-flake8 .
+ruff check .
+ruff format .
 ```
 
 ### Adding New Features
@@ -836,7 +850,7 @@ flake8 .
 
 ### Code Style
 
-- Use **Black** for code formatting
+- Use **Ruff** for code formatting and linting
 - Follow **PEP 8** standards
 - Write **type hints** for all functions
 - Include **docstrings** for public APIs
@@ -849,6 +863,7 @@ MIT License - see LICENSE file for details.
 ## 🙋‍♀️ Support
 
 - **Documentation**: This README and inline code documentation
+- **UV Guide**: See [UV_GUIDE.md](UV_GUIDE.md) for package manager documentation
 - **Examples**: See `examples.py`, `simple_langraph_example.py`, `langraph_example.py`
 - **Tests**: Comprehensive test suite in `machine_rules/tests/`
 - **Issues**: Submit bug reports and feature requests via GitHub issues
@@ -861,6 +876,31 @@ MIT License - see LICENSE file for details.
 - [ ] **Metrics & Monitoring**: Rule execution analytics
 - [ ] **Cloud Deployment**: Kubernetes/Docker deployment templates
 - [ ] **More Integrations**: Streamlit, Gradio, FastAPI middleware
+
+## 📦 UV Package Manager
+
+This project uses [UV](https://github.com/astral-sh/uv) for fast, reliable Python package management.
+
+### Benefits
+- ⚡ **10-100x faster** than pip
+- 🔒 **Lock file support** for reproducible builds  
+- 🎯 **Smart dependency resolution**
+- 💚 **Drop-in pip replacement**
+
+### Quick Start
+```bash
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Setup project
+uv venv && source .venv/bin/activate
+uv pip install -e ".[dev]"
+```
+
+### Documentation
+- 📖 [UV Guide](UV_GUIDE.md) - Complete UV documentation
+- 🔄 [Migration Guide](MIGRATION_UV.md) - Migrate from pip to UV
+- 🚀 [Integration Summary](UV_INTEGRATION.md) - What changed
 
 ---
 

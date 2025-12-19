@@ -1,24 +1,69 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "machine-rules"
-version = "0.1.0"
-description = "JSR-94 compatible rules engine for Python"
+version = "0.2.0"
+description = "JSR-94 compatible rules engine for Python with secure expression evaluation"
+readme = "README.md"
+requires-python = ">=3.9"  # Python 3.8 reached EOL in October 2024
+license = "MIT"
 authors = [
-    { name="Your Name", email="your.email@example.com" }
+    { name="Machine Rules Contributors", email="machine-rules@example.com" }
 ]
+keywords = ["rules-engine", "jsr-94", "business-rules", "decision-engine", "ai-agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core dependencies - minimal for basic usage
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "pyyaml",
-    "durable-rules",
-    "pydantic",
-    "pytest",
-    "pandas",
-    "openpyxl"
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "simpleeval>=0.9.13",
 ]
+
+[project.optional-dependencies]
+# Optional: FastAPI REST API support
+api = [
+    "fastapi>=0.115.0",  # Requires starlette>=0.49.1 (fixes GHSA-7f5h-v6xp-fcq8, GHSA-2c2j-9gv5-cj73)
+    "starlette>=0.49.1",  # Explicit constraint to avoid vulnerable versions on Python 3.8
+    "uvicorn[standard]>=0.24.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "build>=1.0.0",
+    "types-PyYAML>=6.0.0",
+]
+
+# All optional features
+all = [
+    "machine-rules[api]",
+]
+
+[project.urls]
+Homepage = "https://github.com/haveard/machine_rules"
+Repository = "https://github.com/haveard/machine_rules"
+Issues = "https://github.com/haveard/machine_rules/issues"
+Documentation = "https://github.com/haveard/machine_rules#readme"
+Changelog = "https://github.com/haveard/machine_rules/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["machine_rules*"]
+exclude = ["tests*", "docs*"]

@@ -12,15 +12,18 @@ The example shows:
 4. Building a stateful conversation agent with rules
 
 Requirements:
-    pip install langgraph langchain-openai
+    pip install langgraph langchain-ollama
+    
+    # Ensure Ollama is running with the model:
+    ollama pull gpt-oss:20b
 """
 
 import os
 import tempfile
-from typing import Dict, Any, List, TypedDict, Annotated, Optional
-from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
+from typing import Dict, Any, List, TypedDict, Annotated, Optional, Literal
+from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from langchain_ollama import ChatOllama
 
 # Machine Rules imports
 from machine_rules.api.registry import RuleServiceProviderManager
@@ -31,7 +34,7 @@ from machine_rules.loader.yaml_loader import YAMLRuleLoader
 class ConversationState(TypedDict):
     """State for our LangGraph conversation agent."""
 
-    messages: Annotated[List[BaseMessage], add_messages]
+    messages: List[BaseMessage]
     customer_data: Dict[str, Any]
     conversation_context: Dict[str, Any]
     rule_results: List[Dict[str, Any]]
@@ -45,6 +48,12 @@ class RulesLangGraphAgent:
 
     def __init__(self):
         """Initialize the agent with rule engine and LangGraph workflow."""
+        # Initialize Ollama LLM
+        self.llm = ChatOllama(
+            model="gpt-oss:20b",
+            temperature=0.7,
+        )
+        
         # Initialize rules engine
         self.provider = RuleServiceProviderManager.get("api")
         if not self.provider:
@@ -199,14 +208,13 @@ rules:
         workflow.add_node("generate_response", self._generate_response)
         workflow.add_node("escalate", self._escalate)
 
-        # Add edges
-        workflow.set_entry_point("analyze_customer")
+        # Add edges (LangGraph v1 uses START instead of set_entry_point)
+        workflow.add_edge(START, "analyze_customer")
         workflow.add_edge("analyze_customer", "apply_tier_rules")
         workflow.add_edge("apply_tier_rules", "apply_routing_rules")
         workflow.add_conditional_edges(
             "apply_routing_rules",
             self._should_escalate,
-            {"escalate": "escalate", "respond": "generate_response"},
         )
         workflow.add_edge("generate_response", END)
         workflow.add_edge("escalate", END)
@@ -298,12 +306,15 @@ rules:
             "next_action": "escalate" if routing_info.get("escalate") else "respond",
         }
 
-    def _should_escalate(self, state: ConversationState) -> str:
+    def _should_escalate(self, state: ConversationState) -> Literal["escalate", "generate_response"]:
         """Conditional edge function to determine if escalation is needed."""
-        return state.get("next_action", "respond")
+        action = state.get("next_action", "respond")
+        if action == "escalate":
+            return "escalate"
+        return "generate_response"
 
     def _generate_response(self, state: ConversationState) -> ConversationState:
-        """Generate an appropriate response based on rules results."""
+        """Generate an appropriate response based on rules results using LLM."""
         tier_result = next(
             (
                 r["result"]
@@ -321,38 +332,45 @@ rules:
             {},
         )
 
-        # Build response based on rule results
+        # Build context for LLM
+        customer_message = state["messages"][-1].content
         greeting = tier_result.get("greeting", "Hello!")
+        tier = tier_result.get("tier", "Standard")
         suggested_response = routing_result.get(
             "suggested_response", "general_assistance"
         )
+        route_to = routing_result.get("route_to", "general_support")
 
-        # Generate contextual response
-        if suggested_response == "technical_troubleshooting":
-            response = (
-                f"{greeting} I see you're experiencing a technical "
-                f"issue. Let me connect you with our technical support "
-                f"team who can help resolve this quickly."
-            )
-        elif suggested_response == "billing_assistance":
-            response = (
-                f"{greeting} I understand you have a billing "
-                f"question. Our billing specialists will be able to "
-                f"help you with this right away."
-            )
-        else:
-            response = (
-                f"{greeting} I'm here to help you today. Let me "
-                f"understand your needs better."
-            )
+        # Create prompt for LLM with rule-based context
+        system_prompt = f"""You are a customer service agent. Based on the rules engine analysis:
+
+Customer Tier: {tier}
+Greeting: {greeting}
+Routing: {route_to}
+Suggested Response Type: {suggested_response}
+
+Generate a helpful, professional response to the customer's message.
+Keep it concise (2-3 sentences) and appropriate for their tier level."""
+
+        # Generate response using Ollama
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": customer_message}
+        ]
+        
+        llm_response = self.llm.invoke(messages)
+        response = llm_response.content
 
         # Add tier-specific personalization
-        if tier_result.get("tier") == "VIP":
-            response += " As a VIP customer, you'll receive priority " "assistance."
+        if tier == "VIP":
+            response += " As a VIP customer, you'll receive priority assistance."
 
         ai_message = AIMessage(content=response)
+        
+        # Append to messages instead of replacing
+        new_messages = state["messages"] + [ai_message]
 
-        return {**state, "messages": [ai_message]}
+        return {**state, "messages": new_messages}
 
     def _escalate(self, state: ConversationState) -> ConversationState:
         """Handle escalation scenarios."""
@@ -376,8 +394,11 @@ rules:
         )
 
         ai_message = AIMessage(content=response)
+        
+        # Append to messages instead of replacing
+        new_messages = state["messages"] + [ai_message]
 
-        return {**state, "messages": [ai_message]}
+        return {**state, "messages": new_messages}
 
     def process_message(
         self, message: str, customer_data: Optional[Dict[str, Any]] = None
@@ -541,8 +562,10 @@ def example_dynamic_rule_updates():
 
 
 if __name__ == "__main__":
-    print("LangGraph + Machine Rules Integration Examples")
+    print("LangGraph v1 + Machine Rules + Ollama Integration Examples")
     print("=" * 60)
+    print("\nUsing Ollama model: gpt-oss:20b")
+    print("Make sure Ollama is running with: ollama pull gpt-oss:20b\n")
 
     try:
         example_conversation_flow()
@@ -552,4 +575,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"\nError running examples: {e}")
+        print("\nMake sure Ollama is running and gpt-oss:20b is pulled:")
+        print("  ollama serve")
+        print("  ollama pull gpt-oss:20b")
         raise

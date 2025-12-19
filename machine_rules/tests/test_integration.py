@@ -9,7 +9,6 @@ including providers, loaders, sessions, and API endpoints.
 import pytest
 import tempfile
 import os
-import pandas as pd
 from fastapi.testclient import TestClient
 
 # Import core components and ensure initialization
@@ -18,7 +17,7 @@ from machine_rules.api.registry import RuleServiceProviderManager
 from machine_rules.api.execution_set import Rule, RuleExecutionSet
 from machine_rules.adapters.machine_adapter import MachineRuleServiceProvider
 from machine_rules.loader.yaml_loader import YAMLRuleLoader
-from machine_rules.loader.dmn_loader import DMNRuleLoader
+# DMN loader removed - deprecated due to security vulnerabilities
 
 
 def get_api_provider():
@@ -268,63 +267,7 @@ rules:
             os.unlink(temp_path)
 
 
-class TestDMNLoaderIntegration:
-    """Integration tests for DMN/Excel loader with full rule execution."""
-
-    def test_dmn_decision_table_integration(self):
-        """Test DMN decision table from Excel to execution."""
-        # Create decision table data
-        data = {
-            'condition': [
-                '>= 100000',
-                '>= 50000',
-                '< 50000'
-            ],
-            'action': [
-                '"PREMIUM"',
-                '"STANDARD"',
-                '"BASIC"'
-            ]
-        }
-
-        df = pd.DataFrame(data)
-
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
-            df.to_excel(f.name, index=False)
-            temp_path = f.name
-
-        try:
-            execution_set = DMNRuleLoader.from_excel(temp_path)
-
-            provider = get_api_provider()
-            assert provider is not None, "API provider should be registered"
-            admin = provider.get_rule_administrator()
-            runtime = provider.get_rule_runtime()
-
-            admin.register_rule_execution_set("subscription_rules", execution_set)
-
-            # Test different income levels
-            test_incomes = [
-                {'income': 150000, 'expected': 'PREMIUM'},
-                {'income': 75000, 'expected': 'STANDARD'},
-                {'income': 30000, 'expected': 'BASIC'}
-            ]
-
-            session = runtime.create_rule_session("subscription_rules")
-
-            for test_case in test_incomes:
-                session.reset()
-                session.add_facts([test_case])
-                results = session.execute()
-
-                # DMN rules should fire the first matching rule
-                assert len(results) >= 1
-                assert results[0]['result'] == test_case['expected']
-
-            session.close()
-
-        finally:
-            os.unlink(temp_path)
+# DMN loader integration tests removed - DMN loader deprecated and removed due to security vulnerabilities
 
 
 class TestSessionStateIntegration:

@@ -19,6 +19,8 @@ app = FastAPI()
 @app.post("/execute")
 def execute_rule_set(data: FactModel):
     try:
+        from machine_rules.api.exceptions import RuleValidationError
+        
         provider = RuleServiceProviderManager.get("api")
         if not provider:
             detail = "No rule service provider registered for 'api'"
@@ -34,7 +36,7 @@ def execute_rule_set(data: FactModel):
 
         return {"results": results}
 
-    except ValueError as e:
+    except (ValueError, RuleValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         detail = f"Internal server error: {str(e)}"
