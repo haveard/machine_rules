@@ -5,14 +5,16 @@ A JSR-94 compatible rule engine framework for Python that provides a standard in
 ## 🚀 Features
 
 - **JSR-94 Compatible API**: Full implementation of the Java Rule Engine API specification
-- **Safe Expression Evaluation**: Secure rule evaluation using sandboxed expressions
+- **Safe Expression Evaluation**: Secure rule evaluation using `simpleeval` sandbox (blocks code injection)
 - **Multiple Rule Loaders**: Support for YAML and programmatic rule definition
 - **Stateless and Stateful Sessions**: Flexible rule execution patterns
-- **LangGraph Integration**: Seamlessly integrate with LangGraph workflows for AI agents
-- **FastAPI Integration**: REST API for rule execution
-- **Machine Rules Engine**: High-performance rule execution backend
-- **Comprehensive Testing**: Full test coverage with pytest
-- **Type Safety**: Pydantic schema validation
+- **LangGraph v1 Integration**: Build AI agents with rule-based decision making
+- **Ollama Support**: Integrate with local LLMs via Ollama for hybrid AI/rules systems
+- **FastAPI REST API**: HTTP endpoints for rule execution and management
+- **High Performance**: Efficient rule execution with priority-based evaluation
+- **Comprehensive Testing**: 96% test coverage with pytest
+- **Type Safety**: Full type hints and Pydantic schema validation
+- **Python 3.9+**: Modern Python with no legacy dependencies
 
 > **⚠️ Security Notice**: Read [SECURITY.md](SECURITY.md) before loading rules from untrusted sources.
 
@@ -44,8 +46,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install the package
 uv pip install .
 
-# For LangGraph integration
-uv pip install langgraph langchain-core
+# For LangGraph integration (with Ollama support)
+uv pip install langgraph langchain-ollama
 
 # For development
 uv pip install -e ".[dev]"
@@ -56,8 +58,8 @@ uv pip install -e ".[dev]"
 ```bash
 pip install .
 
-# For LangGraph integration
-pip install langgraph langchain-core
+# For LangGraph integration (with Ollama support)
+pip install langgraph langchain-ollama
 
 # For development
 pip install -e ".[dev]"
@@ -285,11 +287,11 @@ print(results[0])  # {'segment': 'VIP', 'priority': 'highest', ...}
 
 ### LangGraph Integration
 
-Build AI agents that use rules for decision making:
+Build AI agents that use rules for decision making (requires LangGraph v1):
 
 ```python
-from typing import Dict, Any, TypedDict
-from langgraph.graph import StateGraph, END
+from typing import Dict, Any, TypedDict, List
+from langgraph.graph import StateGraph, START, END
 from machine_rules.api.registry import RuleServiceProviderManager
 from machine_rules.api.execution_set import Rule, RuleExecutionSet
 
@@ -360,7 +362,8 @@ class CustomerServiceAgent:
         workflow.add_node("route_inquiry", self._route_inquiry)
         workflow.add_node("generate_response", self._generate_response)
         
-        workflow.set_entry_point("classify_customer")
+        # LangGraph v1 uses START constant instead of set_entry_point
+        workflow.add_edge(START, "classify_customer")
         workflow.add_edge("classify_customer", "route_inquiry")
         workflow.add_edge("route_inquiry", "generate_response")
         workflow.add_edge("generate_response", END)
@@ -732,33 +735,59 @@ def test_custom_rules():
 Run the comprehensive examples:
 
 ```bash
-# Main examples
+# Core rule engine examples (programmatic, YAML, complex business logic)
 python examples.py
 
-# Simple LangGraph integration
-python simple_langraph_example.py
-
-# Advanced LangGraph integration  
+# LangGraph integration with Ollama (requires Ollama running with gpt-oss:20b)
+ollama pull gpt-oss:20b  # First time only
 python langraph_example.py
 ```
+
+> **Note**: The LangGraph example requires [Ollama](https://ollama.ai) to be installed and running with the `gpt-oss:20b` model.
 
 ### Example Output
 
 ```
-Machine Rules Engine - JSR-94 Compatible Examples
-============================================================
+================================================================================
+  Machine Rules Engine - JSR-94 Compatible Examples
+  Demonstrating rule-based decision making in Python
+================================================================================
+
+🔧 Rules engine initialized with providers:
+   • api
+   • inmemory
+   • machine
+
 === Programmatic Rules Example ===
-Processed 4 facts, got 4 results:
-  1. {'category': 'high_income', 'discount': 0.15, 'message': 'VIP customer'}
-  2. {'category': 'standard', 'discount': 0.05, 'message': 'Standard customer'}
+Demonstrating: Creating rules with Python functions
+
+📊 Processed 4 customers:
+----------------------------------------------------------------------
+1. VIP customer: John Doe - Income $150,000
+   Category: HIGH_INCOME | Discount: 15.0% | Credit Limit: $50,000
+2. Standard customer: Jane Smith - Income $75,000
+   Category: STANDARD | Discount: 5.0% | Credit Limit: $10,000
 
 === YAML Rules Example ===
-Customer segmentation results:
-  VIP Customer: {'segment': 'VIP', 'priority': 'highest', 'perks': ['free_shipping', 'personal_advisor']}
-  Premium Customer: {'segment': 'Premium', 'priority': 'high', 'perks': ['free_shipping']}
+Demonstrating: Loading rules from YAML configuration
 
-=== LangGraph Integration ===
-🤖 VIP Emergency Response: "URGENT: As a VIP customer, connecting you immediately to our emergency team..."
+📈 Customer Segmentation Results:
+----------------------------------------------------------------------
+👤 VIP Customer         | VIP        | Bonus: $1000
+   Perks: free_shipping, personal_advisor, early_access
+👤 Premium Customer    | Premium    | Bonus: $250
+   Perks: free_shipping, priority_support
+
+=== Complex Business Logic Example ===
+Demonstrating: Multi-criteria loan approval decision
+
+💳 Loan Application Decisions:
+--------------------------------------------------------------------------------
+✅ Alice Premium        | Score: 780 | Income: $120,000
+   Decision: APPROVED        | Rate: 3.5% | Max: $500,000
+   Reason: Excellent credit and financial profile
+
+✅ All Examples Completed Successfully
 ```
 
 ## 📁 Project Structure
@@ -863,19 +892,29 @@ MIT License - see LICENSE file for details.
 ## 🙋‍♀️ Support
 
 - **Documentation**: This README and inline code documentation
-- **UV Guide**: See [UV_GUIDE.md](UV_GUIDE.md) for package manager documentation
-- **Examples**: See `examples.py`, `simple_langraph_example.py`, `langraph_example.py`
+- **Security**: See [SECURITY.md](SECURITY.md) for security best practices
+- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines
+- **Examples**: See `examples.py` and `langraph_example.py` for comprehensive usage examples
 - **Tests**: Comprehensive test suite in `machine_rules/tests/`
 - **Issues**: Submit bug reports and feature requests via GitHub issues
 
 ## 🔮 Roadmap
 
-- [ ] **GUI Rule Builder**: Visual rule creation interface
-- [ ] **Rule Versioning**: Version control for rule sets
-- [ ] **A/B Testing**: Built-in support for rule experimentation
-- [ ] **Metrics & Monitoring**: Rule execution analytics
-- [ ] **Cloud Deployment**: Kubernetes/Docker deployment templates
-- [ ] **More Integrations**: Streamlit, Gradio, FastAPI middleware
+**Completed:**
+- ✅ Safe expression evaluation (simpleeval)
+- ✅ YAML rule loader
+- ✅ LangGraph v1 integration
+- ✅ Ollama/LLM support
+- ✅ FastAPI REST API
+- ✅ Comprehensive test suite (96% coverage)
+
+**Planned:**
+- [ ] Rule versioning and rollback
+- [ ] Performance profiling and optimization tools
+- [ ] Rule execution metrics and analytics
+- [ ] Additional LLM integrations (OpenAI, Anthropic)
+- [ ] Docker/Kubernetes deployment templates
+- [ ] Web UI for rule management
 
 ## 📦 UV Package Manager
 
