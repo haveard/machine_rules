@@ -936,11 +936,6 @@ uv venv && source .venv/bin/activate
 uv pip install -e ".[dev]"
 ```
 
-### Documentation
-- 📖 [UV Guide](UV_GUIDE.md) - Complete UV documentation
-- 🔄 [Migration Guide](MIGRATION_UV.md) - Migrate from pip to UV
-- 🚀 [Integration Summary](UV_INTEGRATION.md) - What changed
-
 ---
 
 **Happy Rule Building!** 🎉
