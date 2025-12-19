@@ -20,7 +20,7 @@ Requirements:
 
 import os
 import tempfile
-from typing import Dict, Any, List, TypedDict, Annotated, Optional, Literal
+from typing import Dict, Any, List, TypedDict, Optional, Literal
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_ollama import ChatOllama
