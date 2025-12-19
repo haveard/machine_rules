@@ -180,7 +180,7 @@ class TestSecurityDocumentation:
 
     def test_security_documentation_content(self):
         """SECURITY.md must contain key security information."""
-        content = Path("SECURITY.md").read_text().lower()
+        content = Path("SECURITY.md").read_text(encoding="utf-8").lower()
 
         assert "eval" in content, "Must discuss eval security"
         assert "trust" in content, "Must discuss trust model"
