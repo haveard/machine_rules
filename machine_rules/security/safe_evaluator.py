@@ -25,12 +25,12 @@ from typing import Any, Dict
 import logging
 
 try:
-    from simpleeval import (
+    from simpleeval import (  # type: ignore[import-untyped]
         EvalWithCompoundTypes,
         NameNotDefined,
         FunctionNotDefined,
         AttributeDoesNotExist,
-    )  # type: ignore[import-untyped]
+    )
 
     SIMPLEEVAL_AVAILABLE = True
 except ImportError:
