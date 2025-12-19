@@ -38,6 +38,7 @@ api = [
     "fastapi>=0.115.0",  # Requires starlette>=0.49.1 (fixes GHSA-7f5h-v6xp-fcq8, GHSA-2c2j-9gv5-cj73)
     "starlette>=0.49.1",  # Explicit constraint to avoid vulnerable versions on Python 3.8
     "uvicorn[standard]>=0.24.0",
+    "httpx>=0.24.0",  # Required for FastAPI TestClient
 ]
 
 # Development dependencies
@@ -51,6 +52,7 @@ dev = [
     "fastapi>=0.115.0",  # Required for tests
     "starlette>=0.49.1",  # Required for tests
     "uvicorn[standard]>=0.24.0",  # Required for tests
+    "httpx>=0.24.0",  # Required for FastAPI TestClient
     "types-PyYAML>=6.0.0",
 ]
 
