@@ -41,6 +41,11 @@ api = [
     "httpx>=0.24.0",  # Required for FastAPI TestClient
 ]
 
+# Optional: MCP server support (requires Python 3.10+)
+mcp = [
+    "mcp[cli]>=1.0.0",
+]
+
 # Development dependencies
 dev = [
     "pytest>=7.4.0",
@@ -54,11 +59,13 @@ dev = [
     "uvicorn[standard]>=0.24.0",  # Required for tests
     "httpx>=0.24.0",  # Required for FastAPI TestClient
     "types-PyYAML>=6.0.0",
+    "mcp[cli]>=1.0.0",  # Required for MCP server tests
 ]
 
 # All optional features
 all = [
     "machine-rules[api]",
+    "machine-rules[mcp]",
 ]
 
 [project.urls]

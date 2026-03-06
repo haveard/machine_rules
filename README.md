@@ -11,8 +11,9 @@ A JSR-94 compatible rule engine framework for Python that provides a standard in
 - **LangGraph v1 Integration**: Build AI agents with rule-based decision making
 - **Ollama Support**: Integrate with local LLMs via Ollama for hybrid AI/rules systems
 - **FastAPI REST API**: HTTP endpoints for rule execution and management
+- **MCP Server**: Expose the rule engine as [Model Context Protocol](https://modelcontextprotocol.io) tools for LLM agents
 - **High Performance**: Efficient rule execution with priority-based evaluation
-- **Comprehensive Testing**: 96% test coverage with pytest
+- **Comprehensive Testing**: 140 tests, 98% coverage on core modules
 - **Type Safety**: Full type hints and Pydantic schema validation
 - **Python 3.9+**: Modern Python with no legacy dependencies
 
@@ -27,7 +28,9 @@ A JSR-94 compatible rule engine framework for Python that provides a standard in
   - [Programmatic Rules](#programmatic-rules)
   - [YAML Rules](#yaml-rules)
   - [LangGraph Integration](#langgraph-integration)
+  - [LangGraph + MCP Integration](#langgraph--mcp-integration)
 - [REST API](#rest-api)
+- [MCP Server](#-mcp-server)
 - [Advanced Usage](#advanced-usage)
 - [Testing](#testing)
 - [Contributing](#contributing)
@@ -46,6 +49,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install the package
 uv pip install .
 
+# For MCP server support (requires Python 3.10+)
+uv pip install -e ".[mcp]"
+
 # For LangGraph integration (with Ollama support)
 uv pip install langgraph langchain-ollama
 
@@ -57,6 +63,9 @@ uv pip install -e ".[dev]"
 
 ```bash
 pip install .
+
+# For MCP server support (requires Python 3.10+)
+pip install -e ".[mcp]"
 
 # For LangGraph integration (with Ollama support)
 pip install langgraph langchain-ollama
@@ -434,6 +443,65 @@ result = agent.process_inquiry(
 print(result["response"])  # "URGENT: As a VIP customer, connecting you immediately..."
 ```
 
+### LangGraph + MCP Integration
+
+Connect a LangGraph agent to the rule engine through the MCP server — rules are
+registered via `register_rule_set` and executed via `execute_rules`, all over
+the Model Context Protocol:
+
+```python
+import asyncio
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from typing import TypedDict, Dict, Any, List
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_ollama import ChatOllama
+
+# Import helpers from the MCP example
+from langgraph_mcp_example import mcp_rules_client, MCPRulesClient
+
+class State(TypedDict):
+    customer: Dict[str, Any]
+    message: str
+    tier: Dict[str, Any]
+    response: str
+    messages: List[BaseMessage]
+
+async def run():
+    async with mcp_rules_client() as client:
+        # Register rules via MCP
+        await client.register_rule_set(
+            name="tiers",
+            strategy="FIRST_MATCH",
+            rules=[
+                {
+                    "name": "vip",
+                    "condition": "fact.get('total_spent', 0) > 10000",
+                    "action": "{'tier': 'VIP', 'greeting': 'Welcome back, VIP!'}",
+                    "priority": 100,
+                },
+                {
+                    "name": "standard",
+                    "condition": "True",
+                    "action": "{'tier': 'Standard', 'greeting': 'How can we help?'}",
+                    "priority": 1,
+                },
+            ],
+        )
+
+        # Execute rules through MCP transport
+        results = await client.execute_rules(
+            "tiers", [{"id": "C001", "total_spent": 15000}]
+        )
+        print(results[0])  # {'tier': 'VIP', 'greeting': 'Welcome back, VIP!'}
+
+asyncio.run(run())
+```
+
+See [`langgraph_mcp_example.py`](langgraph_mcp_example.py) for the full
+example including a complete LangGraph state machine, Ollama LLM response
+generation, and direct MCP tool usage.
+
 ## 🌐 REST API
 
 Start the FastAPI server:
@@ -547,6 +615,60 @@ const response = await fetch('http://localhost:8000/execute', {
 const result = await response.json();
 console.log(result.results);
 ```
+
+## 🤖 MCP Server
+
+The rule engine ships with a [Model Context Protocol](https://modelcontextprotocol.io)
+(MCP) server that exposes all rule-management capabilities as tools and resources
+that LLM agents can call directly.
+
+### Starting the MCP server
+
+```bash
+# stdio transport (used by MCP clients such as Claude Desktop)
+python -m machine_rules.mcp_server
+
+# or via the mcp CLI
+mcp run machine_rules/mcp_server.py
+```
+
+### Available tools
+
+| Tool | Description |
+|---|---|
+| `register_rule_set` | Register a new rule execution set |
+| `execute_rules` | Execute a registered rule set against a list of facts |
+| `list_rule_sets` | List all registered rule set names |
+| `get_rule_set` | Retrieve rule set metadata |
+| `deregister_rule_set` | Remove a registered rule set |
+| `check_expression` | Validate that an expression is safe to evaluate |
+
+### Available resources
+
+| URI template | Description |
+|---|---|
+| `rules://{name}` | Read a registered rule set as JSON |
+
+### Claude Desktop configuration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "machine-rules": {
+      "command": "python",
+      "args": ["-m", "machine_rules.mcp_server"]
+    }
+  }
+}
+```
+
+### In-process usage (Python)
+
+Use the in-memory transport from `langgraph_mcp_example.py` to embed the MCP
+client and server in the same process — ideal for testing and single-process
+deployments (no `subprocess` required).
 
 ## 🔧 Advanced Usage
 
@@ -687,6 +809,12 @@ pytest machine_rules/tests/ -v
 # Run specific test file
 pytest machine_rules/tests/test_core.py -v
 
+# Run MCP server unit tests
+pytest machine_rules/tests/test_mcp_server.py -v
+
+# Run MCP protocol round-trip integration tests
+pytest machine_rules/tests/test_mcp_integration.py -v
+
 # Run with coverage
 pytest machine_rules/tests/ --cov=machine_rules --cov-report=html
 
@@ -741,9 +869,13 @@ python examples.py
 # LangGraph integration with Ollama (requires Ollama running with gpt-oss:20b)
 ollama pull gpt-oss:20b  # First time only
 python langraph_example.py
+
+# LangGraph + MCP client example (demonstrates both direct MCP usage and
+# a LangGraph state machine backed by the MCP server)
+python langgraph_mcp_example.py
 ```
 
-> **Note**: The LangGraph example requires [Ollama](https://ollama.ai) to be installed and running with the `gpt-oss:20b` model.
+> **Note**: The LangGraph examples require [Ollama](https://ollama.ai) to be installed and running with the `gpt-oss:20b` model. The MCP example (`langgraph_mcp_example.py`) also requires `pip install ".[mcp]"`.
 
 ### Example Output
 
@@ -796,6 +928,7 @@ Demonstrating: Multi-criteria loan approval decision
 machine_rules/
 ├── __init__.py                 # Package initialization
 ├── __main__.py                 # FastAPI application entry point
+├── mcp_server.py               # MCP server (FastMCP tools + resource)
 ├── api/                        # JSR-94 API implementation
 │   ├── administrator.py        # Rule management
 │   ├── execution_set.py        # Rule collections
@@ -814,7 +947,9 @@ machine_rules/
     ├── test_core.py            # Core functionality tests
     ├── test_api.py             # API tests
     ├── test_integration.py     # Integration tests
-    └── test_loaders.py         # Loader tests
+    ├── test_loaders.py         # Loader tests
+    ├── test_mcp_server.py      # MCP server unit tests
+    └── test_mcp_integration.py # MCP protocol round-trip tests
 ```
 
 ## 🤝 Contributing
@@ -858,7 +993,7 @@ cd machine_rules
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install in development mode
+# Install in development mode (includes MCP and API extras)
 pip install -e ".[dev]"
 
 # Run tests
@@ -894,7 +1029,7 @@ MIT License - see LICENSE file for details.
 - **Documentation**: This README and inline code documentation
 - **Security**: See [SECURITY.md](SECURITY.md) for security best practices
 - **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines
-- **Examples**: See `examples.py` and `langraph_example.py` for comprehensive usage examples
+- **Examples**: See `examples.py`, `langraph_example.py`, and `langgraph_mcp_example.py` for comprehensive usage examples
 - **Tests**: Comprehensive test suite in `machine_rules/tests/`
 - **Issues**: Submit bug reports and feature requests via GitHub issues
 
@@ -906,7 +1041,9 @@ MIT License - see LICENSE file for details.
 - ✅ LangGraph v1 integration
 - ✅ Ollama/LLM support
 - ✅ FastAPI REST API
-- ✅ Comprehensive test suite (96% coverage)
+- ✅ MCP server with 6 tools + resource (FastMCP)
+- ✅ LangGraph + MCP client example
+- ✅ Comprehensive test suite (140 tests, 98% coverage on core modules)
 
 **Planned:**
 - [ ] Rule versioning and rollback
