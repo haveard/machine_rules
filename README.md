@@ -15,7 +15,7 @@ A JSR-94 compatible rule engine framework for Python that provides a standard in
 - **High Performance**: Efficient rule execution with priority-based evaluation
 - **Comprehensive Testing**: 140 tests, 98% coverage on core modules
 - **Type Safety**: Full type hints and Pydantic schema validation
-- **Python 3.9+**: Modern Python with no legacy dependencies
+- **Python 3.11+**: Modern Python with no legacy dependencies
 
 > **⚠️ Security Notice**: Read [SECURITY.md](SECURITY.md) before loading rules from untrusted sources.
 

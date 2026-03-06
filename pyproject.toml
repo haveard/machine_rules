@@ -7,7 +7,7 @@ name = "machine-rules"
 version = "0.2.0"
 description = "JSR-94 compatible rules engine for Python with secure expression evaluation"
 readme = "README.md"
-requires-python = ">=3.9"  # Python 3.8 reached EOL in October 2024
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     { name="Machine Rules Contributors", email="machine-rules@example.com" }
@@ -17,8 +17,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -41,7 +39,7 @@ api = [
     "httpx>=0.24.0",  # Required for FastAPI TestClient
 ]
 
-# Optional: MCP server support (requires Python 3.10+)
+# Optional: MCP server support
 mcp = [
     "mcp[cli]>=1.0.0",
 ]
