@@ -42,7 +42,7 @@ Requirements:
 import asyncio
 import json
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, TypedDict
 
 import anyio
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -59,6 +59,7 @@ from machine_rules.mcp_server import mcp as _mcp_server_instance
 # ---------------------------------------------------------------------------
 # Helpers: extract content from CallToolResult
 # ---------------------------------------------------------------------------
+
 
 def _extract_text(result) -> str:
     """Return a string from a CallToolResult (text or structured content)."""
@@ -85,6 +86,7 @@ def _extract_structured(result):
 # ---------------------------------------------------------------------------
 # Thin async wrapper around a connected MCP ClientSession
 # ---------------------------------------------------------------------------
+
 
 class MCPRulesClient:
     """Typed async wrapper over ``mcp.ClientSession`` for the Machine Rules MCP server."""
@@ -142,6 +144,7 @@ class MCPRulesClient:
 # Context manager: in-memory MCP transport
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def mcp_rules_client():
     """
@@ -170,6 +173,7 @@ async def mcp_rules_client():
 # ---------------------------------------------------------------------------
 # LangGraph agent
 # ---------------------------------------------------------------------------
+
 
 class AgentState(TypedDict):
     customer: Dict[str, Any]
@@ -209,8 +213,7 @@ class LangGraphMCPAgent:
         {
             "name": "loyal",
             "condition": (
-                "fact.get('years_customer', 0) > 2 "
-                "or fact.get('total_spent', 0) > 1000"
+                "fact.get('years_customer', 0) > 2 or fact.get('total_spent', 0) > 1000"
             ),
             "action": (
                 "{'tier': 'Loyal', 'priority': 'medium', 'sla_minutes': 15, "
@@ -327,11 +330,15 @@ class LangGraphMCPAgent:
         """Determine routing by calling execute_rules via MCP."""
         fact = {**state["customer"], "message": state["message"]}
         results = await self._client.execute_rules("routing", [fact])
-        routing = results[0] if results else {
-            "route": "general_support",
-            "escalate": False,
-            "response_type": "general_help",
-        }
+        routing = (
+            results[0]
+            if results
+            else {
+                "route": "general_support",
+                "escalate": False,
+                "response_type": "general_help",
+            }
+        )
         return {**state, "routing": routing}
 
     async def _generate_response(self, state: AgentState) -> AgentState:
@@ -352,10 +359,12 @@ class LangGraphMCPAgent:
                 f"Response type: {routing.get('response_type', 'general_help')}. "
                 f"Reply helpfully in 2–3 sentences."
             )
-            ai_resp = await self._llm.ainvoke([
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": state["message"]},
-            ])
+            ai_resp = await self._llm.ainvoke(
+                [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": state["message"]},
+                ]
+            )
             text = ai_resp.content
 
         new_messages = state.get("messages", []) + [AIMessage(content=text)]
@@ -363,9 +372,7 @@ class LangGraphMCPAgent:
 
     # -- Public API ----------------------------------------------------------
 
-    async def process(
-        self, message: str, customer: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process(self, message: str, customer: Dict[str, Any]) -> Dict[str, Any]:
         """Run the LangGraph workflow for a single customer inquiry."""
         graph = self.build_graph()
         result = await graph.ainvoke(
@@ -388,6 +395,7 @@ class LangGraphMCPAgent:
 # ---------------------------------------------------------------------------
 # Demo
 # ---------------------------------------------------------------------------
+
 
 async def _demo_direct_mcp(client: MCPRulesClient) -> None:
     """Demonstrate calling MCP tools directly — no LLM involved."""
@@ -436,8 +444,8 @@ async def _demo_direct_mcp(client: MCPRulesClient) -> None:
     # Execute rules against applicants
     applicants = [
         {"name": "Alice", "credit_score": 780, "income": 120_000},
-        {"name": "Bob",   "credit_score": 670, "income":  45_000},
-        {"name": "Carol", "credit_score": 580, "income":  38_000},
+        {"name": "Bob", "credit_score": 670, "income": 45_000},
+        {"name": "Carol", "credit_score": 580, "income": 38_000},
     ]
     results = await client.execute_rules("loan_approval", applicants)
 

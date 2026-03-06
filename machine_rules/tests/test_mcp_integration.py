@@ -10,11 +10,14 @@ the MCP transport layer.
 """
 
 import json
+from typing import Any
 
 import anyio
 import pytest
 from mcp import ClientSession
 from mcp.shared.message import SessionMessage
+from mcp.types import TextResourceContents
+from pydantic import AnyUrl
 
 from machine_rules.mcp_server import mcp as mcp_server, _admin
 
@@ -25,16 +28,19 @@ pytestmark = pytest.mark.asyncio
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_text_content(result) -> str:
     """Extract text from a CallToolResult (text content or structured)."""
     if result.content:
         return result.content[0].text
     if result.structuredContent is not None:
-        return json.dumps(result.structuredContent.get("result", result.structuredContent))
+        return json.dumps(
+            result.structuredContent.get("result", result.structuredContent)
+        )
     raise ValueError("CallToolResult has no content or structuredContent")
 
 
-def _parse_json_content(result) -> object:
+def _parse_json_content(result) -> Any:
     """Extract and parse JSON/structured data from a CallToolResult."""
     if result.structuredContent is not None:
         value = result.structuredContent
@@ -48,6 +54,7 @@ def _parse_json_content(result) -> object:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def clean_mcp_registrations():
@@ -80,6 +87,7 @@ def sample_rules():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestMCPIntegration:
     """Full MCP protocol round-trip integration tests."""
@@ -114,6 +122,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_list_tools(self):
         """Server advertises all expected tools."""
+
         async def check(client: ClientSession):
             result = await client.list_tools()
             tool_names = {t.name for t in result.tools}
@@ -132,6 +141,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_tools_have_descriptions(self):
         """Every tool has a non-empty description."""
+
         async def check(client: ClientSession):
             result = await client.list_tools()
             for tool in result.tools:
@@ -144,6 +154,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_register_rule_set(self, sample_rules):
         """Register a rule set via MCP and verify confirmation."""
+
         async def check(client: ClientSession):
             result = await client.call_tool(
                 "register_rule_set",
@@ -159,6 +170,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_register_invalid_expression(self):
         """Registering with a dangerous expression returns an error."""
+
         async def check(client: ClientSession):
             bad_rules = [
                 {
@@ -180,6 +192,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_list_rule_sets_empty(self):
         """list_rule_sets returns empty list when nothing is registered."""
+
         async def check(client: ClientSession):
             result = await client.call_tool("list_rule_sets", {})
             data = _parse_json_content(result)
@@ -191,6 +204,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_list_rule_sets_after_register(self, sample_rules):
         """list_rule_sets reflects a freshly registered set."""
+
         async def check(client: ClientSession):
             await client.call_tool(
                 "register_rule_set",
@@ -211,6 +225,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_execute_rules_matching(self, sample_rules):
         """Execute rules and get correct results through MCP transport."""
+
         async def check(client: ClientSession):
             await client.call_tool(
                 "register_rule_set",
@@ -234,6 +249,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_execute_rules_empty_facts(self, sample_rules):
         """Executing with empty facts returns empty results."""
+
         async def check(client: ClientSession):
             await client.call_tool(
                 "register_rule_set",
@@ -251,6 +267,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_execute_rules_unregistered(self):
         """Executing against an unregistered rule set returns error."""
+
         async def check(client: ClientSession):
             result = await client.call_tool(
                 "execute_rules",
@@ -263,6 +280,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_execute_first_match_strategy(self):
         """FIRST_MATCH strategy returns only the highest-priority match."""
+
         async def check(client: ClientSession):
             rules = [
                 {
@@ -297,6 +315,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_get_rule_set(self, sample_rules):
         """get_rule_set returns correct metadata through MCP."""
+
         async def check(client: ClientSession):
             await client.call_tool(
                 "register_rule_set",
@@ -306,9 +325,7 @@ class TestMCPIntegration:
                     "description": "Integration info test",
                 },
             )
-            result = await client.call_tool(
-                "get_rule_set", {"name": "info_set"}
-            )
+            result = await client.call_tool("get_rule_set", {"name": "info_set"})
             data = _parse_json_content(result)
             assert data["name"] == "info_set"
             assert data["description"] == "Integration info test"
@@ -320,10 +337,9 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_get_rule_set_nonexistent(self):
         """get_rule_set for an unknown name returns error."""
+
         async def check(client: ClientSession):
-            result = await client.call_tool(
-                "get_rule_set", {"name": "missing"}
-            )
+            result = await client.call_tool("get_rule_set", {"name": "missing"})
             assert result.isError
 
         await self._run_with_client(check)
@@ -333,14 +349,13 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_deregister_rule_set(self, sample_rules):
         """Deregistering removes the rule set from listings."""
+
         async def check(client: ClientSession):
             await client.call_tool(
                 "register_rule_set",
                 {"name": "del_set", "rules": sample_rules},
             )
-            result = await client.call_tool(
-                "deregister_rule_set", {"name": "del_set"}
-            )
+            result = await client.call_tool("deregister_rule_set", {"name": "del_set"})
             text = _parse_text_content(result)
             assert "del_set" in text
 
@@ -355,6 +370,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_check_expression_safe(self):
         """check_expression for a simple arithmetic expression."""
+
         async def check(client: ClientSession):
             result = await client.call_tool(
                 "check_expression", {"expression": "1 + 2 * 3"}
@@ -369,6 +385,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_check_expression_unsafe(self):
         """check_expression rejects dangerous patterns."""
+
         async def check(client: ClientSession):
             result = await client.call_tool(
                 "check_expression", {"expression": "__import__('os')"}
@@ -383,6 +400,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_read_resource(self, sample_rules):
         """Reading a rules://{name} resource returns rule set JSON."""
+
         async def check(client: ClientSession):
             await client.call_tool(
                 "register_rule_set",
@@ -392,8 +410,9 @@ class TestMCPIntegration:
                     "description": "Resource integration test",
                 },
             )
-            result = await client.read_resource("rules://res_set")
+            result = await client.read_resource(AnyUrl("rules://res_set"))
             content = result.contents[0]
+            assert isinstance(content, TextResourceContents)
             data = json.loads(content.text)
             assert data["name"] == "res_set"
             assert data["description"] == "Resource integration test"
@@ -404,6 +423,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_list_resource_templates(self):
         """Server advertises the rules:// resource template."""
+
         async def check(client: ClientSession):
             result = await client.list_resource_templates()
             uris = [t.uriTemplate for t in result.resourceTemplates]
@@ -416,6 +436,7 @@ class TestMCPIntegration:
     @pytest.mark.asyncio
     async def test_full_workflow(self):
         """Complete workflow: register → execute → inspect → deregister."""
+
         async def check(client: ClientSession):
             rules = [
                 {
@@ -455,9 +476,7 @@ class TestMCPIntegration:
             assert "loyalty" in _parse_json_content(listing)
 
             # 3. Inspect
-            info = await client.call_tool(
-                "get_rule_set", {"name": "loyalty"}
-            )
+            info = await client.call_tool("get_rule_set", {"name": "loyalty"})
             info_data = _parse_json_content(info)
             assert info_data["name"] == "loyalty"
             assert len(info_data["rules"]) == 3
@@ -481,8 +500,10 @@ class TestMCPIntegration:
             assert results[2]["tier"] == "basic"
 
             # 5. Read via resource
-            resource = await client.read_resource("rules://loyalty")
-            res_data = json.loads(resource.contents[0].text)
+            resource = await client.read_resource(AnyUrl("rules://loyalty"))
+            loyalty_content = resource.contents[0]
+            assert isinstance(loyalty_content, TextResourceContents)
+            res_data = json.loads(loyalty_content.text)
             assert res_data["description"] == "Customer loyalty tiers"
 
             # 6. Deregister

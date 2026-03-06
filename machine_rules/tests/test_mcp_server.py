@@ -15,7 +15,6 @@ from machine_rules.mcp_server import (
     check_expression,
     get_rule_set_resource,
     _admin,
-    _runtime,
 )
 from machine_rules.api.exceptions import RuleEngineError, RuleValidationError
 
@@ -58,9 +57,7 @@ class TestRegisterRuleSet:
         assert "2 rules" in result
 
     def test_register_with_description(self):
-        result = register_rule_set(
-            "desc_set", SAMPLE_RULES, description="A test set"
-        )
+        result = register_rule_set("desc_set", SAMPLE_RULES, description="A test set")
         assert "desc_set" in result
         info = get_rule_set("desc_set")
         assert info["description"] == "A test set"
@@ -402,9 +399,7 @@ class TestSecurityEnforcement:
         ],
     )
     def test_dangerous_actions_rejected_at_registration(self, expr):
-        rules = [
-            {"name": "bad", "condition": "fact.get('x', 0) > 0", "action": expr}
-        ]
+        rules = [{"name": "bad", "condition": "fact.get('x', 0) > 0", "action": expr}]
         with pytest.raises((RuleValidationError, Exception)):
             register_rule_set("sec_act", rules)
 
@@ -454,9 +449,7 @@ class TestEdgeCases:
             },
         ]
         register_rule_set("complex", rules, strategy="FIRST_MATCH")
-        results = execute_rules(
-            "complex", [{"age": 25, "income": 60000}]
-        )
+        results = execute_rules("complex", [{"age": 25, "income": 60000}])
         assert len(results) == 1
         assert results[0]["tier"] == "premier"
 
